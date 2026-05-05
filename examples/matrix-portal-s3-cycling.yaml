@@ -1,6 +1,11 @@
 esphome:
   name: transit-tracker-cycling
   friendly_name: Transit Tracker (Cycling)
+  on_boot:
+    priority: -100
+    then:
+      - lambda: |-
+          id(matrix)->set_rotation(display::DISPLAY_ROTATION_180_DEGREES);
 
 esp32:
   variant: esp32s3
@@ -74,39 +79,47 @@ time:
     timezone: America/Los_Angeles
 
 color:
-  - id: rapidride_red
-    hex: "F50046"
+  - id: c_28813F
+    hex: "28813F"
+  - id: c_007CAD
+    hex: "007CAD"
 
 transit_tracker:
   id: tracker
   base_url: "wss://tt.horner.tj/"
   limit: 6
-  feed_code: "st"
+  time_display: "arrival"
+  show_units: "short"
+  list_mode: "nextPerRoute"
+  scroll_headsigns: false
 
-  # TEST: Enable page cycling - show 1 trip at a time, cycling every 5 seconds
-  trips_per_page: 1
+  trips_per_page: 3
   page_cycle_duration: 5s
 
-  # Optional: Show remaining trips indicator (requires API support)
-  # Uncomment to display "(-N)" showing how many more trips are coming
-  # show_remaining_trips: true
+  show_remaining_trips: true
 
   stops:
-    - stop_id: "1_71971" # Redmond Way & Bear Creek Pkwy
-      time_offset: -8min
+    - stop_id: "st:40_99610"
+      time_offset: "-12min"
       routes:
-        - "1_100113" # 221
-        - "1_102704" # 250
-    - stop_id: "1_71961" # RTC
-      time_offset: -10min
+        - "st:40_100479"
+        - "st:40_2LINE"
+    - stop_id: "st:40_99603"
+      time_offset: "-12min"
       routes:
-        - "1_102548" # B Line
+        - "st:40_100479"
+        - "st:40_2LINE"
   styles:
-    - route_id: "1_102548"
-      name: "B"
-      color: rapidride_red
+    - route_id: "st:40_100479"
+      name: "1"
+      color: c_28813F
+    - route_id: "st:40_2LINE"
+      name: "2"
+      color: c_007CAD
   abbreviations:
-    - from: "Bellevue Transit Center Crossroads"
-      to: "Bellevue TC"
-    - from: "Transit Center"
-      to: "TC"
+    - from: "Lynnwood City Center"
+      to: "Lynnwood"
+    - from: "Downtown Redmond"
+      to: "Redmond"
+    - from: "Federal Way Downtown"
+      to: "Federal Way"
