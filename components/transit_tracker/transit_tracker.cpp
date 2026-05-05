@@ -375,7 +375,7 @@ void TransitTracker::draw_trip(
     if (this->show_remaining_trips_ && trip.remaining_trips >= 0) {
       remaining_trips_text = "(-" + std::to_string(trip.remaining_trips) + ")";
       this->font_->measure(remaining_trips_text.c_str(), &remaining_trips_width, &_, &_, &_);
-      remaining_trips_width += 2;  // Add 2px spacing
+      remaining_trips_width += 4;  // Spacing between (-N) and the time
     }
 
     int headsign_clipping_start = route_width + 3;
@@ -385,10 +385,11 @@ void TransitTracker::draw_trip(
       Color time_color = trip.is_realtime ? Color(0x20FF00) : Color(0xa7a7a7);
       this->display_->print(this->display_->get_width() + 1, y_offset, this->font_, time_color, display::TextAlign::TOP_RIGHT, time_display.c_str());
 
-      // Display remaining trips indicator to the left of the time
+      // Display remaining trips indicator to the left of the time (and the realtime icon, when present)
       if (this->show_remaining_trips_ && trip.remaining_trips >= 0) {
         Color remaining_color = trip.remaining_trips == 0 ? Color(0xFF6B00) : Color(0xa7a7a7);  // Orange for last trip
-        int remaining_x = this->display_->get_width() - time_width - remaining_trips_width + 1;
+        int realtime_icon_reserved = trip.is_realtime ? 8 : 0;
+        int remaining_x = this->display_->get_width() - time_width - realtime_icon_reserved - remaining_trips_width + 1;
         this->display_->print(remaining_x, y_offset, this->font_, remaining_color, display::TextAlign::TOP_LEFT, remaining_trips_text.c_str());
       }
     }
