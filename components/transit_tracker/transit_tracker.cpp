@@ -148,6 +148,10 @@ void TransitTracker::on_ws_message_(websockets::WebsocketsMessage message) {
       if (!trip["remainingTrips"].isNull()) {
         remaining_trips = trip["remainingTrips"].as<int>();
       }
+      int trips_remaining_today = -1;
+      if (!trip["tripsRemainingToday"].isNull()) {
+        trips_remaining_today = trip["tripsRemainingToday"].as<int>();
+      }
 
       this->schedule_state_.trips.push_back({
         .route_id = route_id,
@@ -158,6 +162,7 @@ void TransitTracker::on_ws_message_(websockets::WebsocketsMessage message) {
         .departure_time = trip["departureTime"].as<time_t>(),
         .is_realtime = trip["isRealtime"].as<bool>(),
         .remaining_trips = remaining_trips,
+        .trips_remaining_today = trips_remaining_today,
       });
     }
 
@@ -369,11 +374,23 @@ void TransitTracker::draw_trip(
     int time_width;
     this->font_->measure(time_display.c_str(), &time_width, &_, &_, &_);
 
-    // Calculate width for remaining trips indicator if enabled and data is available
+    // Resolve which remaining-trips count to display: prefer the GTFS-static
+    // tripsRemainingToday (true count for the rest of the service day), and
+    // fall back to remainingTrips (count within the API response window) when
+    // the static count isn't available (OBA-backed feeds).
+    int remaining_count = trip.trips_remaining_today >= 0
+      ? trip.trips_remaining_today
+      : trip.remaining_trips;
+
+    // Calculate width for remaining trips indicator if enabled, data is
+    // available, and the count is at or below the configured threshold.
+    bool show_remaining = this->show_remaining_trips_ && remaining_count >= 0
+      && (this->remaining_trips_threshold_ < 0
+          || remaining_count <= this->remaining_trips_threshold_);
     std::string remaining_trips_text = "";
     int remaining_trips_width = 0;
-    if (this->show_remaining_trips_ && trip.remaining_trips >= 0) {
-      remaining_trips_text = "(-" + std::to_string(trip.remaining_trips) + ")";
+    if (show_remaining) {
+      remaining_trips_text = "(-" + std::to_string(remaining_count) + ")";
       this->font_->measure(remaining_trips_text.c_str(), &remaining_trips_width, &_, &_, &_);
       remaining_trips_width += 4;  // Spacing between (-N) and the time
     }
@@ -386,8 +403,8 @@ void TransitTracker::draw_trip(
       this->display_->print(this->display_->get_width() + 1, y_offset, this->font_, time_color, display::TextAlign::TOP_RIGHT, time_display.c_str());
 
       // Display remaining trips indicator to the left of the time (and the realtime icon, when present)
-      if (this->show_remaining_trips_ && trip.remaining_trips >= 0) {
-        Color remaining_color = trip.remaining_trips == 0 ? Color(0xFF6B00) : Color(0xa7a7a7);  // Orange for last trip
+      if (show_remaining) {
+        Color remaining_color = remaining_count == 0 ? Color(0xFF6B00) : Color(0xa7a7a7);  // Orange for last trip
         int realtime_icon_reserved = trip.is_realtime ? 8 : 0;
         int remaining_x = this->display_->get_width() - time_width - realtime_icon_reserved - remaining_trips_width + 1;
         this->display_->print(remaining_x, y_offset, this->font_, remaining_color, display::TextAlign::TOP_LEFT, remaining_trips_text.c_str());

@@ -97,6 +97,11 @@ transit_tracker:
   page_cycle_duration: 5s
 
   show_remaining_trips: true
+  # Only show "(-N)" when service is running thin: when N is at or below this
+  # threshold. Useful for OBA-backed feeds where remainingTrips reflects only
+  # the API forward window (~1-2 hours), so a low N reliably means
+  # end-of-service is near.
+  remaining_trips_threshold: 5
 
   stops:
     - stop_id: "st:40_99610"

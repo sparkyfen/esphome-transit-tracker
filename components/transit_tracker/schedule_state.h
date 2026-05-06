@@ -20,6 +20,11 @@ class Trip {
     // Number of trips remaining after this one for the same route/stop today.
     // -1 if not available from API
     int remaining_trips;
+    // Trips remaining for the rest of the GTFS service day for the same
+    // route/stop. Set by GTFS-static providers; -1 when unavailable
+    // (OBA-backed feeds), in which case consumers should fall back to
+    // remaining_trips.
+    int trips_remaining_today;
 };
 
 class ScheduleState {
