@@ -41,7 +41,7 @@ api:
 # Hits the device at http://<hostname>/
 web_server:
   port: 80
-  version: 3
+  version: 2
 
 wifi:
   ssid: "ReplaceMe"
