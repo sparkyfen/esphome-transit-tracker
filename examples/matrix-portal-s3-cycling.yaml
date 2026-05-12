@@ -29,6 +29,19 @@ ota:
   - platform: esphome
     password: ""
 
+# Native Home Assistant API. Generate your own key with:
+#   openssl rand -base64 32
+# and store it as a "secret" when adding the device in HA.
+api:
+  encryption:
+    key: "ReplaceMeWithAGeneratedBase64Key="
+
+# Built-in dashboard for log streaming, state inspection, and OTA.
+# Hits the device at http://<hostname>/
+web_server:
+  port: 80
+  version: 3
+
 wifi:
   ssid: "ReplaceMe"
   password: "ReplaceMe!"
