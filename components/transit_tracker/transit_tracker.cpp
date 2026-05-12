@@ -64,7 +64,18 @@ void TransitTracker::loop() {
 void TransitTracker::dump_config() {
   ESP_LOGCONFIG(TAG, "Transit Tracker:");
   ESP_LOGCONFIG(TAG, "  Base URL: %s", this->base_url_.c_str());
-  ESP_LOGCONFIG(TAG, "  Schedule: %s", this->schedule_string_.c_str());
+  ESP_LOGCONFIG(TAG, "  Presets: %d (active: %s, default: %s)",
+                (int) this->presets_.size(),
+                this->active_preset_.c_str(),
+                this->default_preset_.c_str());
+  for (const auto &entry : this->presets_) {
+    ESP_LOGCONFIG(TAG, "    %s: %s",
+                  entry.first.c_str(), entry.second.c_str());
+  }
+  if (this->has_sign_location_) {
+    ESP_LOGCONFIG(TAG, "  Sign location: %.6f, %.6f (walk speed %.2f m/s)",
+                  this->sign_lat_, this->sign_lon_, this->walk_speed_ms_);
+  }
   ESP_LOGCONFIG(TAG, "  Limit: %d", this->limit_);
   ESP_LOGCONFIG(TAG, "  List mode: %s", this->list_mode_.c_str());
   ESP_LOGCONFIG(TAG, "  Display departure times: %s", this->display_departure_times_ ? "true" : "false");
@@ -190,10 +201,31 @@ void TransitTracker::on_ws_event_(websockets::WebsocketsEvent event, String data
         data["feedCode"] = this->feed_code_;
       }
 
-      data["routeStopPairs"] = this->schedule_string_;
+      // Look up the active preset's schedule string. Falls back to default
+      // if the active preset somehow points at nothing (e.g. NVS-restored
+      // value references a renamed preset).
+      auto it = this->presets_.find(this->active_preset_);
+      if (it == this->presets_.end()) {
+        ESP_LOGW(TAG, "Active preset '%s' not found; falling back to '%s'",
+                 this->active_preset_.c_str(), this->default_preset_.c_str());
+        this->active_preset_ = this->default_preset_;
+        it = this->presets_.find(this->active_preset_);
+      }
+      data["routeStopPairs"] = it != this->presets_.end() ? it->second : "";
+
       data["limit"] = this->limit_;
       data["sortByDeparture"] = this->display_departure_times_;
       data["listMode"] = this->list_mode_;
+
+      // Walking-time origin: when set, the API will compute haversine /
+      // walk-speed per-stop offsets and apply them in place of any per-pair
+      // offsets in routeStopPairs.
+      if (this->has_sign_location_) {
+        auto walkingFrom = data.createNestedObject("walkingFrom");
+        walkingFrom["lat"] = this->sign_lat_;
+        walkingFrom["lon"] = this->sign_lon_;
+        data["walkSpeedMs"] = this->walk_speed_ms_;
+      }
     });
 
     ESP_LOGV(TAG, "Sending message: %s", message.c_str());
@@ -569,6 +601,25 @@ void HOT TransitTracker::draw_schedule() {
   }
 
   this->schedule_state_.mutex.unlock();
+}
+
+void TransitTracker::set_active_preset(const std::string &name) {
+  if (name == this->active_preset_) {
+    return;
+  }
+  if (this->presets_.find(name) == this->presets_.end()) {
+    ESP_LOGW(TAG, "Ignoring unknown preset '%s'", name.c_str());
+    return;
+  }
+  ESP_LOGI(TAG, "Switching active preset: '%s' -> '%s'",
+           this->active_preset_.c_str(), name.c_str());
+  this->active_preset_ = name;
+  // Clear current trips so the display doesn't keep showing stale data
+  // while we reconnect with the new subscription.
+  this->schedule_state_.mutex.lock();
+  this->schedule_state_.trips.clear();
+  this->schedule_state_.mutex.unlock();
+  this->reconnect();
 }
 
 }  // namespace transit_tracker

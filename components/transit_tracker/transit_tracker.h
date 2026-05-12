@@ -42,8 +42,36 @@ class TransitTracker : public Component {
     void set_base_url(const std::string &base_url) { base_url_ = base_url; }
     void set_feed_code(const std::string &feed_code) { feed_code_ = feed_code; }
     void set_display_departure_times(bool display_departure_times) { display_departure_times_ = display_departure_times; }
-    void set_schedule_string(const std::string &schedule_string) { schedule_string_ = schedule_string; }
     void set_list_mode(const std::string &list_mode) { list_mode_ = list_mode; }
+
+    // Preset configuration. add_preset() registers a (name -> schedule string)
+    // mapping at codegen time. set_default_preset() picks which preset is
+    // active before any user selection / NVS-restored value is applied.
+    // set_active_preset() switches the active preset at runtime, persists it,
+    // and triggers a WS reconnect so the new schedule subscription takes
+    // effect immediately.
+    void add_preset(const std::string &name, const std::string &schedule_string) {
+      presets_[name] = schedule_string;
+    }
+    void set_default_preset(const std::string &name) {
+      default_preset_ = name;
+      if (active_preset_.empty()) {
+        active_preset_ = name;
+      }
+    }
+    void set_active_preset(const std::string &name);
+    const std::string &get_active_preset() const { return active_preset_; }
+
+    // Optional walking-time configuration. When sign_location is set, the
+    // firmware sends walkingFrom + walkSpeedMs in the WS subscription so the
+    // server applies per-stop walking-time offsets. When unset, behavior is
+    // unchanged.
+    void set_sign_location(float lat, float lon) {
+      sign_lat_ = lat;
+      sign_lon_ = lon;
+      has_sign_location_ = true;
+    }
+    void set_walk_speed_ms(float speed) { walk_speed_ms_ = speed; }
     void set_limit(int limit) { limit_ = limit; }
     void set_scroll_headsigns(bool scroll_headsigns) { scroll_headsigns_ = scroll_headsigns; }
     void set_trips_per_page(int trips_per_page) { trips_per_page_ = trips_per_page; }
@@ -92,10 +120,22 @@ class TransitTracker : public Component {
 
     std::string base_url_;
     std::string feed_code_;
-    std::string schedule_string_;
     std::string list_mode_;
     bool display_departure_times_ = true;
     int limit_;
+
+    // Preset state. Populated at codegen via add_preset().
+    // Persistence across reboots is handled by the user's select entity
+    // (restore_value: true), not this component.
+    std::map<std::string, std::string> presets_;
+    std::string default_preset_;
+    std::string active_preset_;
+
+    // Walking-time origin (only sent when has_sign_location_).
+    bool has_sign_location_ = false;
+    float sign_lat_ = 0;
+    float sign_lon_ = 0;
+    float walk_speed_ms_ = 1.4f;
 
     // Page cycling configuration
     // trips_per_page_ = -1 means show all trips (uses limit_ value for backward compatibility)

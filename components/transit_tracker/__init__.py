@@ -38,6 +38,10 @@ CONF_TRIPS_PER_PAGE = "trips_per_page"
 CONF_PAGE_CYCLE_DURATION = "page_cycle_duration"
 CONF_SHOW_REMAINING_TRIPS = "show_remaining_trips"
 CONF_REMAINING_TRIPS_THRESHOLD = "remaining_trips_threshold"
+CONF_PRESETS = "presets"
+CONF_DEFAULT_PRESET = "default_preset"
+CONF_SIGN_LOCATION = "sign_location"
+CONF_WALK_SPEED_MS = "walk_speed_ms"
 
 
 def validate_ws_url(value):
@@ -107,6 +111,41 @@ CONFIG_SCHEMA = cv.All(
                     }
                 )
             ),
+            # Optional preset definitions. When provided, each preset has its
+            # own set of stops/routes; the active preset can be switched at
+            # runtime via set_active_preset() (typically driven from a HA
+            # select entity). When omitted, the top-level `stops` list is
+            # used as a single implicit "default" preset.
+            cv.Optional(CONF_PRESETS): cv.ensure_list(
+                cv.Schema(
+                    {
+                        cv.Required("name"): cv.string,
+                        cv.Required(CONF_STOPS): cv.ensure_list(
+                            cv.Schema(
+                                {
+                                    cv.Required("stop_id"): cv.string,
+                                    cv.Optional(
+                                        "time_offset", default="0s"
+                                    ): cv.time_period,
+                                    cv.Required(CONF_ROUTES): cv.ensure_list(
+                                        cv.string
+                                    ),
+                                }
+                            )
+                        ),
+                    }
+                )
+            ),
+            cv.Optional(CONF_DEFAULT_PRESET): cv.string,
+            cv.Optional(CONF_SIGN_LOCATION): cv.Schema(
+                {
+                    cv.Required("lat"): cv.float_,
+                    cv.Required("lon"): cv.float_,
+                }
+            ),
+            cv.Optional(CONF_WALK_SPEED_MS, default=1.4): cv.float_range(
+                min=0.1, max=10
+            ),
         }
     ).extend(cv.COMPONENT_SCHEMA),
 )
@@ -138,7 +177,42 @@ async def to_code(config):
         cg.add(var.set_base_url(config[CONF_BASE_URL]))
 
     cg.add(var.set_feed_code(config[CONF_FEED_CODE]))
-    cg.add(var.set_schedule_string(_generate_schedule_string(config[CONF_STOPS])))
+
+    # Build the preset map. If `presets:` is provided, register each one and
+    # mark the default. Otherwise fall back to a single implicit "default"
+    # preset from the top-level `stops:` for backwards compatibility.
+    if CONF_PRESETS in config:
+        preset_names = [p["name"] for p in config[CONF_PRESETS]]
+        for preset in config[CONF_PRESETS]:
+            cg.add(
+                var.add_preset(
+                    preset["name"],
+                    _generate_schedule_string(preset[CONF_STOPS]),
+                )
+            )
+        default_preset = config.get(CONF_DEFAULT_PRESET, preset_names[0])
+        if default_preset not in preset_names:
+            raise cv.Invalid(
+                f"default_preset '{default_preset}' is not in the presets list"
+            )
+        cg.add(var.set_default_preset(default_preset))
+    else:
+        cg.add(
+            var.add_preset(
+                "default", _generate_schedule_string(config[CONF_STOPS])
+            )
+        )
+        cg.add(var.set_default_preset("default"))
+
+    if CONF_SIGN_LOCATION in config:
+        cg.add(
+            var.set_sign_location(
+                config[CONF_SIGN_LOCATION]["lat"],
+                config[CONF_SIGN_LOCATION]["lon"],
+            )
+        )
+
+    cg.add(var.set_walk_speed_ms(config[CONF_WALK_SPEED_MS]))
 
     display_departure_times = config[CONF_TIME_DISPLAY] == "departure"
     cg.add(var.set_display_departure_times(display_departure_times))

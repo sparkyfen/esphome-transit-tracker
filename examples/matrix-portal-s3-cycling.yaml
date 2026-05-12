@@ -107,7 +107,7 @@ transit_tracker:
   list_mode: "nextPerRoute"
   scroll_headsigns: false
 
-  trips_per_page: 3
+  trips_per_page: 2
   page_cycle_duration: 5s
 
   show_remaining_trips: true
@@ -117,17 +117,30 @@ transit_tracker:
   # "only a few trains left" case rather than a constant high number.
   remaining_trips_threshold: 5
 
-  stops:
-    - stop_id: "st_gtfs:99610"
-      time_offset: "-12min"
-      routes:
-        - "st_gtfs:100479"
-        - "st_gtfs:2LINE"
-    - stop_id: "st_gtfs:99603"
-      time_offset: "-12min"
-      routes:
-        - "st_gtfs:100479"
-        - "st_gtfs:2LINE"
+  # Walking-time origin. When set, the firmware tells the API to compute
+  # per-stop walking-time offsets (haversine / walk_speed_ms) instead of
+  # using time_offset on each stop. Lets presets switch with the right
+  # offsets automatically.
+  sign_location:
+    lat: 47.614593
+    lon: -122.317244
+  walk_speed_ms: 1.4
+
+  # Route presets. Each preset is a different set of stops/routes the
+  # display will subscribe to. Switch between them at runtime via the
+  # select entity below (which Home Assistant exposes for the Stream Deck
+  # plugin to call). The first preset is the default at first boot.
+  presets:
+    - name: "Link"
+      stops:
+        - stop_id: "st_gtfs:99610"
+          routes:
+            - "st_gtfs:100479"
+            - "st_gtfs:2LINE"
+        - stop_id: "st_gtfs:99603"
+          routes:
+            - "st_gtfs:100479"
+            - "st_gtfs:2LINE"
   styles:
     - route_id: "st_gtfs:100479"
       name: "1"
@@ -142,3 +155,19 @@ transit_tracker:
       to: "Redmond"
     - from: "Federal Way Downtown"
       to: "Federal Way"
+
+# Exposed to Home Assistant. Stream Deck (via the HA plugin) calls
+# select.select_option on this entity to switch the displayed preset.
+# restore_value: true persists the active preset across reboots.
+select:
+  - platform: template
+    name: "Transit Preset"
+    id: transit_preset_select
+    optimistic: true
+    restore_value: true
+    options:
+      - "Link"
+    initial_option: "Link"
+    set_action:
+      - lambda: |-
+          id(tracker)->set_active_preset(x);
