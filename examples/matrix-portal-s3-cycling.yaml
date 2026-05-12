@@ -98,27 +98,27 @@ transit_tracker:
 
   show_remaining_trips: true
   # Only show "(-N)" when service is running thin: when N is at or below this
-  # threshold. Useful for OBA-backed feeds where remainingTrips reflects only
-  # the API forward window (~1-2 hours), so a low N reliably means
-  # end-of-service is near.
+  # threshold. With GTFS-static feeds this is the true count of trips
+  # remaining today, so a small threshold keeps the indicator focused on the
+  # "only a few trains left" case rather than a constant high number.
   remaining_trips_threshold: 5
 
   stops:
-    - stop_id: "st:40_99610"
+    - stop_id: "st_gtfs:99610"
       time_offset: "-12min"
       routes:
-        - "st:40_100479"
-        - "st:40_2LINE"
-    - stop_id: "st:40_99603"
+        - "st_gtfs:100479"
+        - "st_gtfs:2LINE"
+    - stop_id: "st_gtfs:99603"
       time_offset: "-12min"
       routes:
-        - "st:40_100479"
-        - "st:40_2LINE"
+        - "st_gtfs:100479"
+        - "st_gtfs:2LINE"
   styles:
-    - route_id: "st:40_100479"
+    - route_id: "st_gtfs:100479"
       name: "1"
       color: c_28813F
-    - route_id: "st:40_2LINE"
+    - route_id: "st_gtfs:2LINE"
       name: "2"
       color: c_007CAD
   abbreviations:
