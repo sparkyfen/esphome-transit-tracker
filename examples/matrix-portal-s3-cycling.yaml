@@ -28,6 +28,7 @@ logger:
 ota:
   - platform: esphome
     password: ""
+  - platform: web_server
 
 # Native Home Assistant API. Generate your own key with:
 #   openssl rand -base64 32
