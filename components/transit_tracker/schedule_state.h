@@ -1,5 +1,6 @@
 #pragma once
 
+#include <climits>
 #include <vector>
 #include <mutex>
 
@@ -25,6 +26,10 @@ class Trip {
     // (OBA-backed feeds), in which case consumers should fall back to
     // remaining_trips.
     int trips_remaining_today;
+    // Realtime prediction delay vs static schedule, in seconds. Positive =
+    // late, negative = early. INT_MIN when no realtime data is available
+    // (use is_realtime to gate display).
+    int delay_seconds;
 };
 
 class ScheduleState {

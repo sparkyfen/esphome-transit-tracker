@@ -163,6 +163,10 @@ void TransitTracker::on_ws_message_(websockets::WebsocketsMessage message) {
       if (!trip["tripsRemainingToday"].isNull()) {
         trips_remaining_today = trip["tripsRemainingToday"].as<int>();
       }
+      int delay_seconds = INT_MIN;
+      if (!trip["delaySeconds"].isNull()) {
+        delay_seconds = trip["delaySeconds"].as<int>();
+      }
 
       this->schedule_state_.trips.push_back({
         .route_id = route_id,
@@ -174,6 +178,7 @@ void TransitTracker::on_ws_message_(websockets::WebsocketsMessage message) {
         .is_realtime = trip["isRealtime"].as<bool>(),
         .remaining_trips = remaining_trips,
         .trips_remaining_today = trips_remaining_today,
+        .delay_seconds = delay_seconds,
       });
     }
 
@@ -431,7 +436,20 @@ void TransitTracker::draw_trip(
     int headsign_clipping_end = this->display_->get_width() - time_width - remaining_trips_width - 2;
 
     if (!no_draw) {
-      Color time_color = trip.is_realtime ? Color(0x20FF00) : Color(0xa7a7a7);
+      // Time color: on realtime trips, color-code by delay vs schedule.
+      // No realtime data -> gray. Within +/-1 min of schedule -> green.
+      // 1+ min early -> blue. 2+ min late -> red.
+      Color time_color = Color(0xa7a7a7);  // default: scheduled-only / no delay info
+      if (trip.is_realtime) {
+        time_color = Color(0x20FF00);  // on-time green
+        if (trip.delay_seconds != INT_MIN) {
+          if (trip.delay_seconds <= -60) {
+            time_color = Color(0x40A0FF);  // early: cool blue
+          } else if (trip.delay_seconds >= 120) {
+            time_color = Color(0xFF4040);  // late: warm red
+          }
+        }
+      }
       this->display_->print(this->display_->get_width() + 1, y_offset, this->font_, time_color, display::TextAlign::TOP_RIGHT, time_display.c_str());
 
       // Display remaining trips indicator to the left of the time (and the realtime icon, when present)

@@ -141,6 +141,30 @@ transit_tracker:
           routes:
             - "st_gtfs:100479"
             - "st_gtfs:2LINE"
+    - name: "Bus 8"
+      stops:
+        - stop_id: "kcm:29262"   # E John & Broadway Bay 2 → Seattle Center
+          routes:
+            - "kcm:100275"
+        - stop_id: "kcm:29270"   # E John & Broadway Bay 1 → Mount Baker TC
+          routes:
+            - "kcm:100275"
+    - name: "Bus 10"
+      stops:
+        - stop_id: "kcm:11520"   # Pine & 12th → Capitol Hill via 15th Ave E
+          routes:
+            - "kcm:100002"
+        - stop_id: "kcm:11490"   # Pine & 13th → Downtown Seattle
+          routes:
+            - "kcm:100002"
+    - name: "Bus 12"
+      stops:
+        - stop_id: "kcm:11520"   # Pine & 12th → Interlaken Park via 19th
+          routes:
+            - "kcm:100018"
+        - stop_id: "kcm:11490"   # Pine & 13th → Downtown via Pine St
+          routes:
+            - "kcm:100018"
   styles:
     - route_id: "st_gtfs:100479"
       name: "1"
@@ -167,6 +191,9 @@ select:
     restore_value: true
     options:
       - "Link"
+      - "Bus 8"
+      - "Bus 10"
+      - "Bus 12"
     initial_option: "Link"
     set_action:
       - lambda: |-
