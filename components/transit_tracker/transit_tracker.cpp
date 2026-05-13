@@ -167,6 +167,10 @@ void TransitTracker::on_ws_message_(websockets::WebsocketsMessage message) {
       if (!trip["delaySeconds"].isNull()) {
         delay_seconds = trip["delaySeconds"].as<int>();
       }
+      int walking_offset_seconds = 0;
+      if (!trip["walkingOffsetSeconds"].isNull()) {
+        walking_offset_seconds = trip["walkingOffsetSeconds"].as<int>();
+      }
 
       this->schedule_state_.trips.push_back({
         .route_id = route_id,
@@ -179,6 +183,7 @@ void TransitTracker::on_ws_message_(websockets::WebsocketsMessage message) {
         .remaining_trips = remaining_trips,
         .trips_remaining_today = trips_remaining_today,
         .delay_seconds = delay_seconds,
+        .walking_offset_seconds = walking_offset_seconds,
       });
     }
 
@@ -403,13 +408,33 @@ void TransitTracker::draw_trip(
     int route_width, _;
     this->font_->measure(trip.route_name.c_str(), &route_width, &_, &_, &_);
 
+    // When the API applied a walking offset (i.e. arrival_time has had the
+    // walking time subtracted), back it out for the time display and surface
+    // the walking time as a separate pip. Subtracting a negative value adds
+    // it back. With no walking offset, both arrays are unchanged.
+    time_t display_arrival = trip.arrival_time - trip.walking_offset_seconds;
+    time_t display_departure = trip.departure_time - trip.walking_offset_seconds;
+
     auto time_display = this->localization_.fmt_duration_from_now(
-      this->display_departure_times_ ? trip.departure_time : trip.arrival_time,
+      this->display_departure_times_ ? display_departure : display_arrival,
       rtc_now
     );
 
     int time_width;
     this->font_->measure(time_display.c_str(), &time_width, &_, &_, &_);
+
+    // Walking pip: rendered to the left of the time as a small "+Nw"
+    // annotation when the API applied a walking-time offset. Color is muted
+    // (gray) to distinguish it from the time itself.
+    std::string walking_pip_text = "";
+    int walking_pip_width = 0;
+    bool show_walking_pip = trip.walking_offset_seconds < 0;
+    if (show_walking_pip) {
+      int walk_minutes = (-trip.walking_offset_seconds + 30) / 60;  // round
+      walking_pip_text = "+" + std::to_string(walk_minutes) + "w";
+      this->font_->measure(walking_pip_text.c_str(), &walking_pip_width, &_, &_, &_);
+      walking_pip_width += 3;  // spacing between pip and adjacent elements
+    }
 
     // Resolve which remaining-trips count to display: prefer the GTFS-static
     // tripsRemainingToday (true count for the rest of the service day), and
@@ -433,7 +458,7 @@ void TransitTracker::draw_trip(
     }
 
     int headsign_clipping_start = route_width + 3;
-    int headsign_clipping_end = this->display_->get_width() - time_width - remaining_trips_width - 2;
+    int headsign_clipping_end = this->display_->get_width() - time_width - walking_pip_width - remaining_trips_width - 2;
 
     if (!no_draw) {
       // Time color: on realtime trips, color-code by delay vs schedule.
@@ -452,11 +477,20 @@ void TransitTracker::draw_trip(
       }
       this->display_->print(this->display_->get_width() + 1, y_offset, this->font_, time_color, display::TextAlign::TOP_RIGHT, time_display.c_str());
 
-      // Display remaining trips indicator to the left of the time (and the realtime icon, when present)
+      int realtime_icon_reserved = trip.is_realtime ? 8 : 0;
+
+      // Walking pip: shown between the (-N) indicator and the realtime icon
+      // (or time, when not realtime). Same dim gray as the default time
+      // color so it reads as supplementary info.
+      if (show_walking_pip) {
+        int pip_x = this->display_->get_width() - time_width - realtime_icon_reserved - walking_pip_width + 1;
+        this->display_->print(pip_x, y_offset, this->font_, Color(0x707070), display::TextAlign::TOP_LEFT, walking_pip_text.c_str());
+      }
+
+      // Display remaining trips indicator to the left of the walking pip, the realtime icon, and the time
       if (show_remaining) {
         Color remaining_color = remaining_count == 0 ? Color(0xFF6B00) : Color(0xa7a7a7);  // Orange for last trip
-        int realtime_icon_reserved = trip.is_realtime ? 8 : 0;
-        int remaining_x = this->display_->get_width() - time_width - realtime_icon_reserved - remaining_trips_width + 1;
+        int remaining_x = this->display_->get_width() - time_width - realtime_icon_reserved - walking_pip_width - remaining_trips_width + 1;
         this->display_->print(remaining_x, y_offset, this->font_, remaining_color, display::TextAlign::TOP_LEFT, remaining_trips_text.c_str());
       }
     }

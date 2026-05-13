@@ -30,6 +30,11 @@ class Trip {
     // late, negative = early. INT_MIN when no realtime data is available
     // (use is_realtime to gate display).
     int delay_seconds;
+    // Walking-time offset (in seconds) that was applied to arrival_time and
+    // departure_time. Negative = walking time subtracted. 0 when sign_location
+    // is not configured. Used to render a "·Nw" walking pip and to back out
+    // the underlying train-arrival time for display.
+    int walking_offset_seconds;
 };
 
 class ScheduleState {

@@ -179,6 +179,20 @@ transit_tracker:
       to: "Redmond"
     - from: "Federal Way Downtown"
       to: "Federal Way"
+    # Bus headsigns. The walking pip + (-N) indicator make right-side
+    # real estate tight on a 128px display, so trim aggressively.
+    - from: "Mount Baker Transit Center"
+      to: "Mt Baker"
+    - from: "Seattle Center"
+      to: "Sea Ctr"
+    - from: "Capitol Hill Via 15th Ave E"
+      to: "Cap Hill"
+    - from: "Downtown Seattle Via Pine St"
+      to: "Downtown"
+    - from: "Downtown Seattle"
+      to: "Downtown"
+    - from: "Interlaken Park Via 19th Ave"
+      to: "Interlaken"
 
 # Exposed to Home Assistant. Stream Deck (via the HA plugin) calls
 # select.select_option on this entity to switch the displayed preset.
