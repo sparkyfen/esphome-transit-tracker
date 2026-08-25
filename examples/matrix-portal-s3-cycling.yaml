@@ -97,6 +97,8 @@ color:
     hex: "28813F"
   - id: c_007CAD
     hex: "007CAD"
+  - id: c_F47836
+    hex: "F47836"
 
 transit_tracker:
   id: tracker
@@ -165,6 +167,14 @@ transit_tracker:
         - stop_id: "kcm:11490"   # Pine & 13th → Downtown via Pine St
           routes:
             - "kcm:100018"
+    - name: "Streetcar"
+      stops:
+        - stop_id: "kcm:41970"   # Broadway & Pike-Pine → Capitol Hill
+          routes:
+            - "kcm:102638"
+        - stop_id: "kcm:41980"   # Broadway & Pike-Pine → Pioneer Square
+          routes:
+            - "kcm:102638"
   styles:
     - route_id: "st_gtfs:100479"
       name: "1"
@@ -172,6 +182,11 @@ transit_tracker:
     - route_id: "st_gtfs:2LINE"
       name: "2"
       color: c_007CAD
+    # GTFS route_short_name is the full "First Hill Streetcar" string, so a
+    # short badge name is required to fit the display.
+    - route_id: "kcm:102638"
+      name: "SC"
+      color: c_F47836
   abbreviations:
     - from: "Lynnwood City Center"
       to: "Lynnwood"
@@ -193,6 +208,11 @@ transit_tracker:
       to: "Downtown"
     - from: "Interlaken Park Via 19th Ave"
       to: "Interlaken"
+    # Streetcar headsigns
+    - from: "Pioneer Square"
+      to: "Pioneer Sq"
+    - from: "Capitol Hill"
+      to: "Cap Hill"
 
 # Exposed to Home Assistant. Stream Deck (via the HA plugin) calls
 # select.select_option on this entity to switch the displayed preset.
@@ -208,6 +228,7 @@ select:
       - "Bus 8"
       - "Bus 10"
       - "Bus 12"
+      - "Streetcar"
     initial_option: "Link"
     set_action:
       - lambda: |-
