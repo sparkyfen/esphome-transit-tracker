@@ -119,14 +119,20 @@ transit_tracker:
   # "only a few trains left" case rather than a constant high number.
   remaining_trips_threshold: 5
 
+  # Once the last trip of the day is within 15 minutes, show its time as
+  # M:SS in orange so nobody misses it by a minute of rounding.
+  last_trip_countdown: 15min
+
   # Walking-time origin. When set, the firmware tells the API to compute
-  # per-stop walking-time offsets (haversine / walk_speed_ms) instead of
-  # using time_offset on each stop. Lets presets switch with the right
-  # offsets automatically.
+  # per-stop walking-time offsets (haversine / walk_speed_ms) and add them
+  # to each stop's time_offset. Lets presets switch with the right offsets
+  # automatically.
   sign_location:
     lat: 47.614593
     lon: -122.317244
-  walk_speed_ms: 1.4
+  # Haversine is a straight line; the street grid is about 30% longer. An
+  # effective 1.1 m/s turns a 1.4 m/s pace into the real walking time.
+  walk_speed_ms: 1.1
 
   # Route presets. Each preset is a different set of stops/routes the
   # display will subscribe to. Switch between them at runtime via the
@@ -135,11 +141,15 @@ transit_tracker:
   presets:
     - name: "Link"
       stops:
+        # Capitol Hill is a deep station: allow 3 extra minutes from the
+        # entrance down to the platform, on top of the walk.
         - stop_id: "st_gtfs:99610"
+          time_offset: -3min
           routes:
             - "st_gtfs:100479"
             - "st_gtfs:2LINE"
         - stop_id: "st_gtfs:99603"
+          time_offset: -3min
           routes:
             - "st_gtfs:100479"
             - "st_gtfs:2LINE"
@@ -233,3 +243,22 @@ select:
     set_action:
       - lambda: |-
           id(tracker)->set_active_preset(x);
+
+# Display power, exposed to Home Assistant so the Stream Deck can blank the
+# sign without cutting power to the board. Provided by the HUB75 wrapper
+# component, which registers it against the matrix display above.
+switch:
+  - platform: hub75_matrix_display
+    matrix_id: matrix
+    name: "Display Power"
+    id: matrix_power
+    restore_mode: RESTORE_DEFAULT_ON
+
+# Runtime brightness, 0-255. The static `brightness:` on the display above is
+# only the power-on default once this is present.
+number:
+  - platform: hub75_matrix_display
+    matrix_id: matrix
+    name: "Display Brightness"
+    id: matrix_brightness
+    mode: SLIDER

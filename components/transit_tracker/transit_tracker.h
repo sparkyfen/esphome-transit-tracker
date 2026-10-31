@@ -78,6 +78,10 @@ class TransitTracker : public Component {
     void set_page_cycle_duration(int page_cycle_duration) { page_cycle_duration_ = page_cycle_duration; }
     void set_show_remaining_trips(bool show_remaining_trips) { show_remaining_trips_ = show_remaining_trips; }
     void set_remaining_trips_threshold(int threshold) { remaining_trips_threshold_ = threshold; }
+    // Last-trip countdown: when > 0 and a trip is the last of the day for its
+    // route/stop, its time is shown as M:SS once it is within this many
+    // seconds. 0 disables the countdown.
+    void set_last_trip_countdown(int seconds) { last_trip_countdown_seconds_ = seconds; }
 
     void set_unit_display(UnitDisplay unit_display) { this->localization_.set_unit_display(unit_display); }
     void add_abbreviation(const std::string &from, const std::string &to) { abbreviations_[from] = to; }
@@ -151,6 +155,7 @@ class TransitTracker : public Component {
     // Suppress (-N) when the count is greater than this value, so the indicator
     // only appears as service is running thin. -1 means always show.
     int remaining_trips_threshold_ = -1;
+    int last_trip_countdown_seconds_ = 0;  // 0 = disabled
 };
 
 

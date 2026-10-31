@@ -1,5 +1,6 @@
 #include "transit_tracker.h"
 #include "string_utils.h"
+#include "countdown.h"
 
 #include "esphome/core/log.h"
 #include "esphome/core/application.h"
@@ -228,8 +229,8 @@ void TransitTracker::on_ws_event_(websockets::WebsocketsEvent event, String data
       data["listMode"] = this->list_mode_;
 
       // Walking-time origin: when set, the API will compute haversine /
-      // walk-speed per-stop offsets and apply them in place of any per-pair
-      // offsets in routeStopPairs.
+      // walk-speed per-stop offsets and add them to the per-pair offsets in
+      // routeStopPairs, so a stop's time_offset acts as a fixed buffer.
       if (this->has_sign_location_) {
         auto walkingFrom = data.createNestedObject("walkingFrom");
         walkingFrom["lat"] = this->sign_lat_;
@@ -414,11 +415,27 @@ void TransitTracker::draw_trip(
     // it back. With no walking offset, both arrays are unchanged.
     time_t display_arrival = trip.arrival_time - trip.walking_offset_seconds;
     time_t display_departure = trip.departure_time - trip.walking_offset_seconds;
+    time_t shown_time = this->display_departure_times_ ? display_departure : display_arrival;
 
-    auto time_display = this->localization_.fmt_duration_from_now(
-      this->display_departure_times_ ? display_departure : display_arrival,
-      rtc_now
-    );
+    // Resolve which remaining-trips count to display: prefer the GTFS-static
+    // tripsRemainingToday (true count for the rest of the service day), and
+    // fall back to remainingTrips (count within the API response window) when
+    // the static count isn't available (OBA-backed feeds).
+    int remaining_count = trip.trips_remaining_today >= 0
+      ? trip.trips_remaining_today
+      : trip.remaining_trips;
+
+    // Last-trip countdown: the final trip of the service day for this
+    // route/stop switches to a M:SS countdown once it is within the
+    // configured window, so nobody misses it by a minute of rounding. Keyed
+    // on trips_remaining_today only; see countdown.h for why the fallback
+    // count is not used.
+    bool countdown_mode = last_trip_countdown_active(
+      trip.trips_remaining_today, (int)(shown_time - rtc_now), this->last_trip_countdown_seconds_);
+
+    auto time_display = countdown_mode
+      ? this->localization_.fmt_countdown(shown_time, rtc_now)
+      : this->localization_.fmt_duration_from_now(shown_time, rtc_now);
 
     int time_width;
     this->font_->measure(time_display.c_str(), &time_width, &_, &_, &_);
@@ -435,14 +452,6 @@ void TransitTracker::draw_trip(
       this->font_->measure(walking_pip_text.c_str(), &walking_pip_width, &_, &_, &_);
       walking_pip_width += 3;  // spacing between pip and adjacent elements
     }
-
-    // Resolve which remaining-trips count to display: prefer the GTFS-static
-    // tripsRemainingToday (true count for the rest of the service day), and
-    // fall back to remainingTrips (count within the API response window) when
-    // the static count isn't available (OBA-backed feeds).
-    int remaining_count = trip.trips_remaining_today >= 0
-      ? trip.trips_remaining_today
-      : trip.remaining_trips;
 
     // Calculate width for remaining trips indicator if enabled, data is
     // available, and the count is at or below the configured threshold.
@@ -474,6 +483,9 @@ void TransitTracker::draw_trip(
             time_color = Color(0xFF4040);  // late: warm red
           }
         }
+      }
+      if (countdown_mode) {
+        time_color = Color(0xFF6B00);  // last trip: same orange as the (-0) pip
       }
       this->display_->print(this->display_->get_width() + 1, y_offset, this->font_, time_color, display::TextAlign::TOP_RIGHT, time_display.c_str());
 
