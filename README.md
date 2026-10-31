@@ -72,12 +72,19 @@ transit_tracker:
   # are coming after the current one (requires API support)
   show_remaining_trips: false  # Default: false
 
+  # Last trip countdown: once the last trip of the day for a route/stop is
+  # within this window, show its time as minutes:seconds in orange.
+  # 0s (the default) turns it off.
+  last_trip_countdown: 0s
+
   # List of stop and route IDs to track
   stops:
     - stop_id: "1_71971"
       # If it takes you a known amount of time to walk to the
       # stop, you can set a time offset here so that the time
-      # displayed on the board is more like a "leave by" time
+      # displayed on the board is more like a "leave by" time.
+      # With sign_location set, this is added to the computed
+      # walking time instead, e.g. as a platform-access buffer.
       time_offset: -8min # e.g., if it takes you 8 minutes to walk to the stop
       routes:
         - "1_100113"
@@ -168,6 +175,17 @@ display:
     lambda: |-
       id(tracker).draw_schedule();
 ```
+
+### Last Trip Countdown
+
+The `last_trip_countdown` option targets the one trip you can't afford to miss. When a trip is the last of the day for its route and stop, and it's within the window you set, the time switches from rounded minutes to `M:SS` and turns orange, matching the `(-0)` remaining-trips indicator. Other trips are unaffected.
+
+```yaml
+transit_tracker:
+  last_trip_countdown: 15min
+```
+
+Requires a feed that reports how many trips remain today (GTFS-static feeds do; OneBusAway-backed feeds fall back to the count within the response window).
 
 ## License
 

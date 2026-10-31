@@ -16,6 +16,10 @@ enum UnitDisplay : uint8_t {
 class Localization {
   public:
     std::string fmt_duration_from_now(time_t unix_timestamp, uint rtc_now) const;
+    // Minutes and seconds until the timestamp, e.g. "4:07". Used for the
+    // last-trip countdown. Once the time has passed it returns the "Now"
+    // string, like fmt_duration_from_now.
+    std::string fmt_countdown(time_t unix_timestamp, uint rtc_now) const;
 
     void set_unit_display(UnitDisplay unit_display) { unit_display_ = unit_display; }
     void set_now_string(const std::string &now_string) { now_string_ = now_string; }

@@ -38,6 +38,7 @@ CONF_TRIPS_PER_PAGE = "trips_per_page"
 CONF_PAGE_CYCLE_DURATION = "page_cycle_duration"
 CONF_SHOW_REMAINING_TRIPS = "show_remaining_trips"
 CONF_REMAINING_TRIPS_THRESHOLD = "remaining_trips_threshold"
+CONF_LAST_TRIP_COUNTDOWN = "last_trip_countdown"
 CONF_PRESETS = "presets"
 CONF_DEFAULT_PRESET = "default_preset"
 CONF_SIGN_LOCATION = "sign_location"
@@ -83,6 +84,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_PAGE_CYCLE_DURATION, default="5s"): cv.time_period,
             cv.Optional(CONF_SHOW_REMAINING_TRIPS, default=False): cv.boolean,
             cv.Optional(CONF_REMAINING_TRIPS_THRESHOLD, default=-1): cv.int_,
+            cv.Optional(CONF_LAST_TRIP_COUNTDOWN, default="0s"): cv.time_period,
             cv.Optional(CONF_STOPS, default=[]): cv.ensure_list(
                 cv.Schema(
                     {
@@ -221,6 +223,7 @@ async def to_code(config):
     cg.add(var.set_scroll_headsigns(config[CONF_SCROLL_HEADSIGNS]))
     cg.add(var.set_show_remaining_trips(config[CONF_SHOW_REMAINING_TRIPS]))
     cg.add(var.set_remaining_trips_threshold(config[CONF_REMAINING_TRIPS_THRESHOLD]))
+    cg.add(var.set_last_trip_countdown(int(config[CONF_LAST_TRIP_COUNTDOWN].total_seconds)))
 
     if CONF_TRIPS_PER_PAGE in config:
         cg.add(var.set_trips_per_page(config[CONF_TRIPS_PER_PAGE]))

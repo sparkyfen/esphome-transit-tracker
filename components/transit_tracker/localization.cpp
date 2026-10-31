@@ -48,5 +48,15 @@ std::string Localization::fmt_duration_from_now(time_t unix_timestamp, uint rtc_
   }
 }
 
+std::string Localization::fmt_countdown(time_t unix_timestamp, uint rtc_now) const {
+  int diff = unix_timestamp - rtc_now;
+
+  if (diff <= 0) {
+    return this->now_string_;
+  }
+
+  return str_sprintf("%d:%02d", diff / 60, diff % 60);
+}
+
 }
 }
