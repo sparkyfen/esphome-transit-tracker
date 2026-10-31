@@ -3,12 +3,23 @@
 #include <cstdio>
 #include <string>
 
+#include "countdown.h"
 #include "localization.h"
 
 using esphome::transit_tracker::Localization;
+using esphome::transit_tracker::last_trip_countdown_active;
 using esphome::transit_tracker::UNIT_DISPLAY_SHORT;
 
 static int failures = 0;
+
+static void expect_bool(bool got, bool want, const char *what) {
+  if (got != want) {
+    std::printf("FAIL %s: got %s, want %s\n", what, got ? "true" : "false", want ? "true" : "false");
+    failures++;
+  } else {
+    std::printf("ok   %s -> %s\n", what, got ? "true" : "false");
+  }
+}
 
 static void expect_eq(const std::string &got, const std::string &want, const char *what) {
   if (got != want) {
@@ -37,6 +48,17 @@ int main() {
   expect_eq(loc.fmt_duration_from_now(now + 247, now), "4m", "duration 4m");
   expect_eq(loc.fmt_duration_from_now(now + 10, now), "Now", "duration under 30s");
   expect_eq(loc.fmt_duration_from_now(now + 3900, now), "1h5m", "duration over an hour");
+
+  // Countdown gating. Window 900 s = 15 min.
+  expect_bool(last_trip_countdown_active(0, 600, 900), true, "last of day, inside window");
+  expect_bool(last_trip_countdown_active(0, 900, 900), true, "last of day, at window edge");
+  expect_bool(last_trip_countdown_active(0, 901, 900), false, "last of day, outside window");
+  expect_bool(last_trip_countdown_active(0, -5, 900), true, "last of day, already due");
+  expect_bool(last_trip_countdown_active(1, 60, 900), false, "one more trip after this");
+  // No service-day count (OBA feeds report -1): never count down, even
+  // when the response-window count would have said zero.
+  expect_bool(last_trip_countdown_active(-1, 60, 900), false, "no service-day count");
+  expect_bool(last_trip_countdown_active(0, 60, 0), false, "feature disabled");
 
   if (failures) {
     std::printf("%d failure(s)\n", failures);

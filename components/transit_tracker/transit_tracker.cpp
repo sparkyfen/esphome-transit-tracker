@@ -1,5 +1,6 @@
 #include "transit_tracker.h"
 #include "string_utils.h"
+#include "countdown.h"
 
 #include "esphome/core/log.h"
 #include "esphome/core/application.h"
@@ -424,12 +425,13 @@ void TransitTracker::draw_trip(
       ? trip.trips_remaining_today
       : trip.remaining_trips;
 
-    // Last-trip countdown: the final trip of the day for this route/stop
-    // switches to a M:SS countdown once it is within the configured window,
-    // so nobody misses it by a minute of rounding.
-    bool countdown_mode = this->last_trip_countdown_seconds_ > 0
-      && remaining_count == 0
-      && (int)(shown_time - rtc_now) <= this->last_trip_countdown_seconds_;
+    // Last-trip countdown: the final trip of the service day for this
+    // route/stop switches to a M:SS countdown once it is within the
+    // configured window, so nobody misses it by a minute of rounding. Keyed
+    // on trips_remaining_today only; see countdown.h for why the fallback
+    // count is not used.
+    bool countdown_mode = last_trip_countdown_active(
+      trip.trips_remaining_today, (int)(shown_time - rtc_now), this->last_trip_countdown_seconds_);
 
     auto time_display = countdown_mode
       ? this->localization_.fmt_countdown(shown_time, rtc_now)

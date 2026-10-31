@@ -185,7 +185,7 @@ transit_tracker:
   last_trip_countdown: 15min
 ```
 
-Requires a feed that reports how many trips remain today (GTFS-static feeds do; OneBusAway-backed feeds fall back to the count within the response window).
+Requires a feed that reports how many trips remain for the service day. GTFS-static feeds do. OneBusAway-backed feeds only report the count within the response window, so the countdown never triggers for them.
 
 ## License
 
